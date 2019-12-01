@@ -1,8 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
-from ipam_api.serializers import IPInfoSeializer, IPStringSerializer
-from ipam_api.ipcalc import IPString, calculate
+from ipam_api.serializers import IPInfoSerializer, CalcRequestSerializer
 
 IPCALC_INFO = {"message": "Use POST for calculation. OPTIONS for info."}
 
@@ -10,7 +8,7 @@ IPCALC_INFO = {"message": "Use POST for calculation. OPTIONS for info."}
 class IPCalc(APIView):
     """
     Ye olde good IP calculator.
-    Send POST with json { "ip_str": "%IP_STRING%", "prefix": %PREFIX% }
+    Send POST with json { "ip": "%IPADDRESS%"}. Default prefix is 32.
     """
     def get(self, request, format=None):
         """
@@ -22,16 +20,12 @@ class IPCalc(APIView):
         """
         Return calculated IP.
         """
-        ip_str_serializer = IPStringSerializer(data=request.data)
+        calc_request_serializer = CalcRequestSerializer(data=request.data)
         # Checking data validness
-        if ip_str_serializer.is_valid():
-            # Creating ip string object
-            ip_str = ip_str_serializer.save()
+        if calc_request_serializer.is_valid(raise_exception=True):
             # Calculating
-            calculated_data = calculate(ip_str)
-            # Serializing calculated data
-            ip_info_serializer = IPInfoSeializer(calculated_data)
+            calculated_data = calc_request_serializer.save()
+            ip_info_serializer = IPInfoSerializer(calculated_data)
+
             return Response(ip_info_serializer.data)
 
-        # Return error if request is bad
-        return Response(ip_str_serializer.errors, status.HTTP_400_BAD_REQUEST)

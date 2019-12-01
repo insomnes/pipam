@@ -1,8 +1,18 @@
 from rest_framework import serializers
-from ipam_api.ipcalc import IPString
+from ipaddress import AddressValueError, NetmaskValueError
+from ipam_api.ipcalc import ip_validate, calculate
 
 
-class IPInfoSeializer(serializers.Serializer):
+def validate_ip(ip):
+    try:
+        ip_validate(ip)
+    except AddressValueError as exc:
+        raise serializers.ValidationError('Address error: {}'.format(exc))
+    except NetmaskValueError as exc:
+        raise serializers.ValidationError('Netmask error: {}'.format(exc))
+
+
+class IPInfoSerializer(serializers.Serializer):
     version = serializers.ChoiceField(choices=[4, 6])
     is_multicast = serializers.BooleanField()
     is_private = serializers.BooleanField()
@@ -10,9 +20,12 @@ class IPInfoSeializer(serializers.Serializer):
     is_reserved = serializers.BooleanField()
     is_loopback = serializers.BooleanField()
     is_link_local = serializers.BooleanField()
+    is_site_local = serializers.BooleanField(required=False)
     network_address = serializers.CharField()
     broadcast_address = serializers.CharField()
-    hostmask = serializers.CharField()
+    compressed = serializers.CharField()
+    exploded = serializers.CharField()
+    wildcard = serializers.CharField()
     netmask = serializers.CharField()
     num_addresses = serializers.IntegerField()
     prefixlen = serializers.IntegerField()
@@ -20,11 +33,11 @@ class IPInfoSeializer(serializers.Serializer):
     hostmax = serializers.CharField()
 
 
-class IPStringSerializer(serializers.Serializer):
-    ip_str = serializers.IPAddressField(protocol='IPv4')
-    prefix = serializers.IntegerField(min_value=0, max_value=32, default=32)
-    verbose = serializers.BooleanField(default=False)
+class CalcRequestSerializer(serializers.Serializer):
+    ip = serializers.CharField(validators=[validate_ip])
 
-    def create(self, validated_data):
-        return IPString(**validated_data)
+    def save(self, **kwargs):
+        ip = self.validated_data['ip']
+        return calculate(ip)
+
 

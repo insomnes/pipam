@@ -1,30 +1,55 @@
 """
 IP calculator
 """
-from ipaddress import IPv4Network
-
-
-class IPString:
-    def __init__(self, ip_str, prefix=32, verbose=False):
-        self.ip_str = ip_str
-        self.prefix = prefix
-        self.verbose = verbose
+from ipaddress import IPv4Network, IPv6Network
 
 
 class CustomIPv4Network(IPv4Network):
     """
     Class with custom IP info not provided explicitly by IPv4Network
     """
-
-    def __init__(self, *args, **kwargs):
-        super(CustomIPv4Network, self).__init__(*args, **kwargs)
-        hosts = tuple(self.hosts())
-        self.hostmin = hosts[0] if len(hosts) > 1 else self.network_address
-        self.hostmax = hosts[-1] if len(hosts) > 1 else self.network_address
-
-
-def calculate(ip: IPString) -> IPv4Network:
-    address = ip.ip_str + '/' + str(ip.prefix)
-    return CustomIPv4Network(address, strict=False)
+    def __init__(self, address, strict=False):
+        super().__init__(address, strict)
+        self.hostmin = self.network_address + 1 if self.prefixlen < 30 else self.network_address
+        self.hostmax = self.broadcast_address - 1 if self.prefixlen < 30 else self.broadcast_address
+        self.wildcard = self.hostmask
 
 
+class CustomIPv6Network(IPv6Network):
+    """
+    Class with custom IP info not provided explicitly by IPv6Network
+    """
+    def __init__(self, address, strict=False):
+        super().__init__(address, strict)
+        self.hostmin = self.network_address + 1 if self.prefixlen < 126 else self.network_address
+        self.hostmax = self.broadcast_address - 1 if self.prefixlen < 126 else self.broadcast_address
+        self.wildcard = self.hostmask
+
+
+def calculate(ip):
+    """
+    Calculating ip. This function depends on previous ip validation.
+    """
+    if is_ipv6(ip):
+        return CustomIPv6Network(ip)
+    else:
+        return CustomIPv4Network(ip)
+
+
+def ip_validate(ip):
+    """
+    Simple function. Use with except
+    """
+    if is_ipv6(ip):
+        IPv6Network(ip, strict=False)
+    else:
+        IPv4Network(ip, strict=False)
+
+    return None
+
+
+def is_ipv6(ip):
+    if ':' in ip:
+        return True
+    else:
+        return False
