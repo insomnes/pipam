@@ -1,7 +1,7 @@
 """
 IP calculator
 """
-from ipaddress import IPv4Network, IPv6Network
+from ipaddress import IPv4Network, IPv6Network, ip_network
 
 
 class CustomIPv4Network(IPv4Network):
@@ -36,9 +36,16 @@ def calculate(ip):
         return CustomIPv4Network(ip)
 
 
+def check_network_versions_equivalence(this_net, other_net):
+    """
+    Comparing network versions. This function depends on previous ip validation.
+    """
+    return ip_network(this_net, strict=False).version == ip_network(other_net, strict=False)
+
+
 def ip_validate(ip):
     """
-    Simple function. Use with except
+    Simple function. Use with except.
     """
     if is_ipv6(ip):
         IPv6Network(ip, strict=False)
@@ -48,7 +55,17 @@ def ip_validate(ip):
     return None
 
 
+def ip_validate_and_return(ip):
+    if is_ipv6(ip):
+        return IPv6Network(ip, strict=False)
+    else:
+        return IPv4Network(ip, strict=False)
+
+
 def is_ipv6(ip):
+    """
+    Monkey IPv6 check.
+    """
     if ':' in ip:
         return True
     else:
