@@ -19,8 +19,8 @@ class CustomIPv4Network(IPv4Network):
     def __init__(self, *args, **kwargs):
         super(CustomIPv4Network, self).__init__(*args, **kwargs)
         hosts = tuple(self.hosts())
-        self.hostmin = hosts[0]
-        self.hostmax = hosts[-1]
+        self.hostmin = hosts[0] if len(hosts) > 1 else self.network_address
+        self.hostmax = hosts[-1] if len(hosts) > 1 else self.network_address
 
 
 def calculate(ip: IPString) -> IPv4Network:
