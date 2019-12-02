@@ -57,9 +57,9 @@ def ip_validate(ip):
 
 def ip_validate_and_return(ip):
     if is_ipv6(ip):
-        return IPv6Network(ip, strict=False)
+        return CustomIPv6Network(ip, strict=False)
     else:
-        return IPv4Network(ip, strict=False)
+        return CustomIPv4Network(ip, strict=False)
 
 
 def is_ipv6(ip):

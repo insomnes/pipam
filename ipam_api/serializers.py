@@ -1,6 +1,11 @@
 from rest_framework import serializers
+from rest_framework.settings import DEFAULTS
 from ipaddress import AddressValueError, NetmaskValueError
 from ipam_api.ipcalc import check_network_versions_equivalence, ip_validate, ip_validate_and_return
+
+
+_DIFFERENT_VERSIONS_ERROR = "Networks must be the same IP version"
+_REQUIRED_ERROR = "This field is required."
 
 
 def validate_ip(ip):
@@ -19,6 +24,10 @@ def validate_and_return_network(net):
         raise serializers.ValidationError('Address error: {}'.format(exc))
     except NetmaskValueError as exc:
         raise serializers.ValidationError('Netmask error: {}'.format(exc))
+
+
+class TestSerializer(serializers.Serializer):
+    ip = serializers.IPAddressField()
 
 
 class IPInfoSerializer(serializers.Serializer):
@@ -42,14 +51,34 @@ class IPInfoSerializer(serializers.Serializer):
     hostmax = serializers.CharField()
 
 
-class CalcRequestSerializer(serializers.Serializer):
-    ip = serializers.CharField(validators=[validate_ip])
+class NetSerializer(serializers.Serializer):
+    def to_internal_value(self, data):
+        """
+        Converts network to ipaddress ip_network object
+        """
+        errors = dict()
+        validated_data = dict()
+
+        # Checking that IP field is in request data
+        if 'ip' not in data:
+            errors['ip'] = [_REQUIRED_ERROR]
+            raise serializers.ValidationError(errors)
+
+        # Checking ip
+        try:
+            validated_ip = validate_and_return_network(data['ip'])
+        except serializers.ValidationError as exc:
+            errors['ip'] = exc.detail
+        else:
+            validated_data['ip'] = validated_ip
+
+        if errors:
+            raise serializers.ValidationError(errors)
+        else:
+            return validated_data
 
 
-class TwoNetworksRequestSerializer(serializers.Serializer):
-    this_net = serializers.CharField()
-    other_net = serializers.CharField()
-
+class TwoNetsSerializer(serializers.Serializer):
     def to_internal_value(self, data):
         """
         Converts networks to ipaddress ip_network objects
@@ -57,25 +86,33 @@ class TwoNetworksRequestSerializer(serializers.Serializer):
         errors = dict()
         validated_data = dict()
 
+        # Checking that network fields are in request data
+        if 'first_net' not in data:
+            errors['first_net'] = [_REQUIRED_ERROR]
+        if 'second_net' not in data:
+            errors['second_net'] = [_REQUIRED_ERROR]
+        if errors:
+            raise serializers.ValidationError(errors)
+
         # Checking first network
         try:
-            validated_this_net = validate_and_return_network(data['this_net'])
+            validated_firs_net = validate_and_return_network(data['first_net'])
         except serializers.ValidationError as exc:
-            errors['this_net'] = exc
+            errors['first_net'] = exc.detail
         else:
-            validated_data['this_net'] = validated_this_net
+            validated_data['first_net'] = validated_firs_net
         # Checking second net
         try:
-            validated_other_net = validate_and_return_network(data['other_net'])
+            validated_second_net = validate_and_return_network(data['second_net'])
         except serializers.ValidationError as exc:
-            errors['other_net'] = exc
+            errors['second_net'] = exc.detail
         else:
-            validated_data['other_net'] = validated_other_net
+            validated_data['second_net'] = validated_second_net
 
         # Checking version equivalence
         if not errors:
-            if validated_this_net.version != validated_other_net.version:
-                errors['non_field_errors'] = 'Networks must be the same IP version'
+            if validated_firs_net.version != validated_second_net.version:
+                errors[DEFAULTS['NON_FIELD_ERRORS_KEY']] = _DIFFERENT_VERSIONS_ERROR
         if errors:
             raise serializers.ValidationError(errors)
         else:

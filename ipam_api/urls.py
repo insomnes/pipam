@@ -4,6 +4,7 @@ from ipam_api import views
 
 
 urlpatterns = [
+    path('ipcalc/test', views.test),
     path('ipcalc/calculate', views.calculate_ip),
     path('ipcalc/overlaps', views.overlaps)
 ]
