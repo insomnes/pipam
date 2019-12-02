@@ -3,21 +3,39 @@ from rest_framework.response import Response
 from rest_framework.request import Request
 from ipam_api.serializers import IPInfoSerializer, NetSerializer, TwoNetsSerializer, TestSerializer
 
-
 _IPCALC_METHODS = ['GET', 'POST']
 _IPCALC_INFO = {"message": "Use POST for action. OPTIONS for info."}
 
 _TEST_MESSAGE = {"message": "TEST MESSAGE"}
 
 
-def create_ipcalc_operation_response(net1, net2, operation, result):
-    response = Response(
-        {
-            "operation": "{} {} {}".format(net1, operation, net2),
-            "result": result
-         }
-    )
-    return response
+def ipcalc_operation_api_view(ipcalc_operation_function):
+    """
+    Decorator which is doing all similar serialization and validation operations
+    """
+    def ipcalc_operation_function_wrapper(request):
+        if request.method == 'POST':
+            serializer = TwoNetsSerializer(data=request.data)
+            # Checking data validness
+            if serializer.is_valid(raise_exception=True):
+                # Turning networks to ipaddress objects
+                first_net = serializer.validated_data['first_net']
+                second_net = serializer.validated_data['second_net']
+                # Decorated function is used here
+                operation_result = ipcalc_operation_function(first_net, second_net)
+                response = Response(
+                    {
+                        "operation": "{} {} {}".format(first_net, ipcalc_operation_function.__name__, second_net),
+                        "result": operation_result
+                    }
+                )
+
+                return response
+
+        # GET behaviour
+        return Response(_IPCALC_INFO)
+
+    return ipcalc_operation_function_wrapper
 
 
 @api_view(_IPCALC_METHODS)
@@ -49,23 +67,6 @@ def calculate_ip(request: Request):
 
 
 @api_view(_IPCALC_METHODS)
-def overlaps(request: Request):
-    """
-    True if this network is partly or wholly contained in other or other is wholly contained in this network.
-    """
-    if request.method == 'POST':
-        serializer = TwoNetsSerializer(data=request.data)
-        # Checking data validness
-        if serializer.is_valid(raise_exception=True):
-            # Turning networks to ipaddress objects
-            first_net = serializer.validated_data['first_net']
-            second_net = serializer.validated_data['second_net']
-            # Check overlaps
-            overlaps_comparison_result = first_net.overlaps(second_net)
-            response = create_ipcalc_operation_response(first_net, second_net,
-                                                        overlaps.__name__, overlaps_comparison_result)
-
-            return response
-
-    return Response(_IPCALC_INFO)
-
+@ipcalc_operation_api_view
+def overlaps(first_net, second_net):
+    return first_net.overlaps(second_net)
