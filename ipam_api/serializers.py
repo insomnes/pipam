@@ -6,7 +6,7 @@ from ipam_api.ipcalc import calculate_net
 
 _DIFFERENT_VERSIONS_ERROR = "Networks must be the same IP version"
 _REQUIRED_ERROR = "This field is required."
-_IP_FIELD_NAME = 'ip'
+_NET_FIELD_NAME = 'net'
 _FIRST_NET_FIELD_NAME = 'first_net'
 _SECOND_NET_FIELD_NAME = 'second_net'
 
@@ -75,9 +75,9 @@ class NetSerializer(serializers.Serializer):
         Converts network to ipaddress ip_network object
         """
         # Checking that IP field is in request data
-        check_fields_presence_for_serializer(data, _IP_FIELD_NAME)
+        check_fields_presence_for_serializer(data, _NET_FIELD_NAME)
 
-        validated_data = validate_and_return_networks_for_serializer(data, _IP_FIELD_NAME)
+        validated_data = validate_and_return_networks_for_serializer(data, _NET_FIELD_NAME)
 
         return validated_data
 
